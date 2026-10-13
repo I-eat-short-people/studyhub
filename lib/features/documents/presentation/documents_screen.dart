@@ -8,6 +8,7 @@ import '../../../core/widgets/cashew_bottom_sheet.dart';
 import '../../../core/widgets/google_sync_dialog.dart';
 import '../widgets/add_edit_document_sheet.dart';
 import '../widgets/document_card.dart';
+import 'shared_documents_screen.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -37,9 +38,21 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kho Tài Liệu Học Tập'),
-        actions: const [
-          GoogleProfileAppBarButton(),
-          SizedBox(width: 8),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_shared_outlined),
+            tooltip: 'Tài liệu được chia sẻ với tôi',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SharedDocumentsScreen(),
+                ),
+              );
+            },
+          ),
+          const GoogleProfileAppBarButton(),
+          const SizedBox(width: 8),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/database/database_global.dart';
 import 'core/database/platform/shared.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/presentation/home_screen.dart';
 
@@ -19,6 +20,13 @@ void main() async {
     await FirebaseService().initialize();
   } catch (e) {
     debugPrint('Firebase init fallback: $e');
+  }
+
+  // Khởi tạo Supabase Service (Cloud Storage & Document Sharing)
+  try {
+    await SupabaseService().initialize();
+  } catch (e) {
+    debugPrint('Supabase init fallback: $e');
   }
 
   runApp(const StudyHubApp());

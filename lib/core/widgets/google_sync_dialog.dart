@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_sync_service.dart';
 import '../services/firebase_service.dart';
+import '../services/supabase_service.dart';
+import '../../features/documents/presentation/shared_documents_screen.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 
@@ -23,6 +25,8 @@ class GoogleSyncDialog extends StatefulWidget {
 class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
   bool _isFirebaseUploading = false;
   String? _firebaseUploadProgress;
+  bool _isSupabaseUploading = false;
+  String? _supabaseUploadProgress;
 
   @override
   void initState() {
@@ -594,6 +598,118 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Supabase Cloud Storage Upload Button
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32), // Supabase Green
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: (_isSupabaseUploading || isSyncing)
+                      ? null
+                      : () async {
+                          if (!supabaseService.isConfigured) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Chưa cấu hình Supabase URL & Anon Key trong supabase_config.dart'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          setState(() {
+                            _isSupabaseUploading = true;
+                            _supabaseUploadProgress = 'Đang sao lưu lên Supabase...';
+                          });
+                          final count = await supabaseService.backupAllLocalDocumentsToSupabase(
+                            onProgress: (cur, tot) {
+                              setState(() {
+                                _supabaseUploadProgress = 'Đang tải: $cur/$tot tệp...';
+                              });
+                            },
+                          );
+                          setState(() {
+                            _isSupabaseUploading = false;
+                            _supabaseUploadProgress = null;
+                          });
+                          if (context.mounted) {
+                            if (count > 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFF2E7D32),
+                                  content: Text('Đã sao lưu $count tài liệu lên Supabase Storage & Database!'),
+                                  duration: const Duration(seconds: 3),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else {
+                              final err = supabaseService.lastError ?? 'Xảy ra lỗi khi sao lưu lên Supabase';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFFC62828),
+                                  content: Text('Sao lưu thất bại: $err'),
+                                  duration: const Duration(seconds: 4),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  icon: _isSupabaseUploading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.cloud_done_rounded),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _isSupabaseUploading
+                          ? (_supabaseUploadProgress ?? 'Đang tải lên Supabase...')
+                          : 'Sao lưu lên Supabase Storage & Chia sẻ',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Shared Documents Navigation Button
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF1976D2),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    side: BorderSide(
+                      color: const Color(0xFF1976D2).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SharedDocumentsScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.folder_shared_outlined, size: 20),
+                  label: const Text(
+                    'Xem tài liệu được chia sẻ với tôi',
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(height: 10),

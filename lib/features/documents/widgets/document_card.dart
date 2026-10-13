@@ -9,6 +9,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/cashew_bottom_sheet.dart';
 import '../presentation/pdf_viewer_screen.dart';
 import 'add_edit_document_sheet.dart';
+import 'share_document_dialog.dart';
 
 class DocumentCard extends StatelessWidget {
   final Document document;
@@ -294,6 +295,25 @@ class DocumentCard extends StatelessWidget {
                         size: 20, color: textLightColor),
                     tooltip: 'Tải xuống',
                     onPressed: () => _handleDownload(context),
+                  ),
+                ),
+
+                // Slot 2.5: Share Icon
+                SizedBox(
+                  width: 40,
+                  height: 38,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.share_outlined,
+                        size: 20, color: Color(0xFF2E7D32)),
+                    tooltip: 'Chia sẻ tài liệu',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) =>
+                            ShareDocumentDialog(document: document),
+                      );
+                    },
                   ),
                 ),
 
