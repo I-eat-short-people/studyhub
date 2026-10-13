@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_global.dart';
-import '../../../core/database/tables/documents_table.dart';
 import '../../../core/services/file_storage_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/firebase_service.dart';
@@ -178,15 +177,18 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
         final selectedCat = _selectedCategory;
         final docNote = _noteController.text.trim().isEmpty ? null : _noteController.text.trim();
 
+        final localSavedPath = savedPath;
+        final localFinalUrl = finalUrl;
+
         // Chạy ngầm trong microtask
         Future.microtask(() async {
           try {
             Uint8List? fileBytes;
-            if (savedPath != null && await File(savedPath).exists()) {
-              fileBytes = await File(savedPath).readAsBytes();
-            } else if (finalUrl != null && finalUrl.startsWith('data:')) {
-              final idx = finalUrl.indexOf(',');
-              if (idx != -1) fileBytes = base64Decode(finalUrl.substring(idx + 1));
+            if (localSavedPath != null && await File(localSavedPath).exists()) {
+              fileBytes = await File(localSavedPath).readAsBytes();
+            } else if (localFinalUrl != null && localFinalUrl.startsWith('data:')) {
+              final idx = localFinalUrl.indexOf(',');
+              if (idx != -1) fileBytes = base64Decode(localFinalUrl.substring(idx + 1));
             }
 
             if (fileBytes != null && fileBytes.isNotEmpty) {
