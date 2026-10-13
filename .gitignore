@@ -47,3 +47,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Security & Secret Credentials
+lib/core/config/supabase_config.dart
+*.env
+.env*
