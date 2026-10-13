@@ -52,3 +52,4 @@ app.*.map.json
 lib/core/config/supabase_config.dart
 *.env
 .env*
+AI_SECURITY_MISTAKES_GUIDE.md
