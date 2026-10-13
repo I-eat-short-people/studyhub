@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -5,6 +8,9 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_global.dart';
 import '../../../core/database/tables/documents_table.dart';
 import '../../../core/services/file_storage_service.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/services/firebase_service.dart';
+import '../../../core/services/auth_sync_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/cashew_bottom_sheet.dart';
@@ -144,10 +150,9 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
         finalType = _detectedType;
       }
 
+      final docId = widget.document?.documentPk ?? uuid.v4();
       final companion = DocumentsCompanion(
-        documentPk: widget.document != null
-            ? drift.Value(widget.document!.documentPk)
-            : const drift.Value.absent(),
+        documentPk: drift.Value(docId),
         name: drift.Value(_nameController.text.trim()),
         subjectFk: drift.Value(_selectedSubjectPk!),
         type: drift.Value(finalType),
@@ -164,6 +169,61 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
       );
 
       await database.documentDao.insertOrUpdateDocument(companion);
+
+      // TỰ ĐỘNG SAO LƯU LÊN SUPABASE NẾU NGƯỜI DÙNG ĐÃ ĐĂNG NHẬP
+      if (supabaseService.isConfigured &&
+          (firebaseService.isLoggedIn || authSyncService.isLoggedIn)) {
+        final docName = _nameController.text.trim();
+        final selectedSubPk = _selectedSubjectPk!;
+        final selectedCat = _selectedCategory;
+        final docNote = _noteController.text.trim().isEmpty ? null : _noteController.text.trim();
+
+        // Chạy ngầm trong microtask
+        Future.microtask(() async {
+          try {
+            Uint8List? fileBytes;
+            if (savedPath != null && await File(savedPath).exists()) {
+              fileBytes = await File(savedPath).readAsBytes();
+            } else if (finalUrl != null && finalUrl.startsWith('data:')) {
+              final idx = finalUrl.indexOf(',');
+              if (idx != -1) fileBytes = base64Decode(finalUrl.substring(idx + 1));
+            }
+
+            if (fileBytes != null && fileBytes.isNotEmpty) {
+              final subjects = await database.select(database.subjects).get();
+              final subMatch = subjects.where((s) => s.subjectPk == selectedSubPk);
+              final subName = subMatch.isNotEmpty ? subMatch.first.name : 'Môn học';
+
+              final uploaded = await supabaseService.uploadAndSaveDocument(
+                documentPk: docId,
+                name: docName,
+                subjectName: subName,
+                bytes: fileBytes,
+                fileName: docName.endsWith('.pdf') || docName.endsWith('.docx')
+                    ? docName
+                    : '$docName.pdf',
+                mimeType: finalType == DocumentType.pdf
+                    ? 'application/pdf'
+                    : 'application/octet-stream',
+                category: selectedCat.index,
+                note: docNote,
+              );
+
+              if (uploaded != null && uploaded.downloadUrl != null) {
+                await database.documentDao.insertOrUpdateDocument(
+                  DocumentsCompanion(
+                    documentPk: drift.Value(docId),
+                    url: drift.Value(uploaded.downloadUrl),
+                  ),
+                );
+                debugPrint('[AutoSync] Tự động sao lưu tài liệu "$docName" lên Supabase thành công!');
+              }
+            }
+          } catch (autoErr) {
+            debugPrint('[AutoSync] Lỗi tự động sao lưu: $autoErr');
+          }
+        });
+      }
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

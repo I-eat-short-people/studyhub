@@ -1,6 +1,7 @@
 -- =========================================================================
 -- STUDYHUB - SUPABASE DATABASE & STORAGE SCHEMA
 -- Chạy đoạn script SQL này trong mục "SQL Editor" trên Supabase Dashboard
+-- để sửa triệt để lỗi 403 Row-Level Security (RLS) khi upload và lưu tài liệu.
 -- =========================================================================
 
 -- 1. TẠO BẢNG DOCUMENTS (Lưu trữ metadata tài liệu trên Cloud)
@@ -38,30 +39,58 @@ CREATE TABLE IF NOT EXISTS public.document_shares (
     UNIQUE(document_id, shared_with_email)         -- Mỗi tài liệu chỉ chia sẻ 1 lần cho 1 người
 );
 
--- Tạo Index để người nhận truy vấn tức thời các tài liệu được chia sẻ với mình
 CREATE INDEX IF NOT EXISTS idx_shares_shared_with_email ON public.document_shares(shared_with_email);
 CREATE INDEX IF NOT EXISTS idx_shares_document_id ON public.document_shares(document_id);
 
--- 3. CẤU HÌNH BẢO MẬT & QUYỀN TRUY CẬP (Row Level Security - RLS)
--- Bật RLS cho 2 bảng
+-- 3. CẤU HÌNH BẢO MẬT & QUYỀN TRUY CẬP (Row Level Security - RLS) CHO DATABASE
+GRANT ALL ON TABLE public.documents TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.document_shares TO anon, authenticated, service_role;
+
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.document_shares ENABLE ROW LEVEL SECURITY;
 
--- Tạo policy cho phép app truy cập thông qua Supabase anon key
--- (Do ứng dụng xác thực qua Firebase Auth, app sẽ truyền email/uid để kiểm soát)
 DROP POLICY IF EXISTS "Allow anon read write documents" ON public.documents;
 CREATE POLICY "Allow anon read write documents" ON public.documents
-    FOR ALL USING (true) WITH CHECK (true);
+    FOR ALL TO public
+    USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow anon read write shares" ON public.document_shares;
 CREATE POLICY "Allow anon read write shares" ON public.document_shares
-    FOR ALL USING (true) WITH CHECK (true);
+    FOR ALL TO public
+    USING (true) WITH CHECK (true);
 
 -- =========================================================================
--- 4. HƯỚNG DẪN TẠO STORAGE BUCKET TRÊN SUPABASE:
+-- 4. FIX LỖI 403 RLS CHO SUPABASE STORAGE (BUCKET studyhub-files)
+-- Lỗi 403 xảy ra vì bảng storage.objects mặc định chặn quyền upload của anon key.
+-- Các câu lệnh sau sẽ mở quyền upload/tải cho bucket studyhub-files:
 -- =========================================================================
--- Bước 1: Vào Supabase Dashboard -> Menu bên trái chọn "Storage"
--- Bước 2: Bấm nút "New bucket"
--- Bước 3: Đặt tên bucket là: studyhub-files
--- Bước 4: Bật công tắc "Public bucket" sang ON (để cho phép xem preview & tải file nhanh)
--- Bước 5: Bấm "Save bucket"
+
+-- Đảm bảo bucket studyhub-files tồn tại và là public
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('studyhub-files', 'studyhub-files', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Mở quyền INSERT (Upload file)
+DROP POLICY IF EXISTS "Allow public uploads to studyhub-files" ON storage.objects;
+CREATE POLICY "Allow public uploads to studyhub-files" ON storage.objects
+    FOR INSERT TO public
+    WITH CHECK (bucket_id = 'studyhub-files');
+
+-- Mở quyền SELECT (Xem/Tải file)
+DROP POLICY IF EXISTS "Allow public read from studyhub-files" ON storage.objects;
+CREATE POLICY "Allow public read from studyhub-files" ON storage.objects
+    FOR SELECT TO public
+    USING (bucket_id = 'studyhub-files');
+
+-- Mở quyền UPDATE (Ghi đè file nếu đã tồn tại)
+DROP POLICY IF EXISTS "Allow public update in studyhub-files" ON storage.objects;
+CREATE POLICY "Allow public update in studyhub-files" ON storage.objects
+    FOR UPDATE TO public
+    USING (bucket_id = 'studyhub-files')
+    WITH CHECK (bucket_id = 'studyhub-files');
+
+-- Mở quyền DELETE (Xóa file)
+DROP POLICY IF EXISTS "Allow public delete in studyhub-files" ON storage.objects;
+CREATE POLICY "Allow public delete in studyhub-files" ON storage.objects
+    FOR DELETE TO public
+    USING (bucket_id = 'studyhub-files');
