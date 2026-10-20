@@ -38,6 +38,41 @@ class _SharedDocumentsScreenState extends State<SharedDocumentsScreen> {
     }
   }
 
+  DocumentType _resolveDocumentType(SupabaseDocument doc) {
+    final mime = doc.mimeType.toLowerCase();
+    final fName = doc.fileName.toLowerCase();
+    final sPath = doc.storagePath.toLowerCase();
+    final dUrl = (doc.downloadUrl ?? '').toLowerCase();
+    final dName = doc.name.toLowerCase();
+
+    if (mime.contains('pdf') ||
+        fName.endsWith('.pdf') ||
+        sPath.endsWith('.pdf') ||
+        dUrl.contains('.pdf') ||
+        dName.endsWith('.pdf')) {
+      return DocumentType.pdf;
+    }
+    if (mime.contains('presentation') ||
+        mime.contains('powerpoint') ||
+        fName.endsWith('.ppt') ||
+        fName.endsWith('.pptx') ||
+        dName.endsWith('.ppt') ||
+        dName.endsWith('.pptx')) {
+      return DocumentType.ppt;
+    }
+    if (mime.contains('word') ||
+        fName.endsWith('.doc') ||
+        fName.endsWith('.docx') ||
+        dName.endsWith('.doc') ||
+        dName.endsWith('.docx')) {
+      return DocumentType.word;
+    }
+    if (dUrl.isNotEmpty && (dUrl.startsWith('http://') || dUrl.startsWith('https://')) && !mime.contains('application')) {
+      return DocumentType.link;
+    }
+    return DocumentType.pdf;
+  }
+
   Future<void> _openPreview(SupabaseDocument doc) async {
     if (doc.downloadUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,12 +86,19 @@ class _SharedDocumentsScreenState extends State<SharedDocumentsScreen> {
       documentPk: doc.id,
       name: doc.name,
       subjectFk: doc.subjectName ?? 'Môn học',
-      type: doc.name.toLowerCase().endsWith('.pdf') ? DocumentType.pdf : DocumentType.word,
+      type: _resolveDocumentType(doc),
       category: DocumentCategory.values[doc.category.clamp(0, 3)],
       url: doc.downloadUrl,
       fileSize: doc.fileSize,
       note: doc.note,
       isPinned: false,
+      tags: doc.tags,
+      isPhysical: doc.isPhysical,
+      isAvailableForBorrow: doc.isAvailableForBorrow,
+      physicalLocation: doc.physicalLocation,
+      address: doc.address,
+      latitude: doc.latitude,
+      longitude: doc.longitude,
       dateCreated: doc.createdAt ?? DateTime.now(),
       dateTimeModified: DateTime.now(),
     );
@@ -111,16 +153,27 @@ class _SharedDocumentsScreenState extends State<SharedDocumentsScreen> {
         documentPk: drift.Value(doc.id),
         name: drift.Value(doc.name),
         subjectFk: drift.Value(subjectPk),
-        type: drift.Value(doc.name.toLowerCase().endsWith('.pdf') ? DocumentType.pdf : DocumentType.word),
+        type: drift.Value(_resolveDocumentType(doc)),
         category: drift.Value(DocumentCategory.values[doc.category.clamp(0, 3)]),
         filePath: drift.Value(localFilePath),
         url: drift.Value(doc.downloadUrl),
-        fileSize: drift.Value(doc.fileSize),
-        note: drift.Value('Được chia sẻ bởi ${doc.ownerEmail}'),
+        note: drift.Value(doc.note),
         isPinned: const drift.Value(false),
       );
 
       await database.documentDao.insertOrUpdateDocument(companion);
+
+      // Lưu ngay vào cache quyền
+      supabaseService.cacheAccessInfo(
+        doc.id,
+        DocumentAccessInfo(
+          isOwner: false,
+          ownerEmail: doc.ownerEmail,
+          permission: doc.sharePermission ?? 'view',
+          canEdit: doc.sharePermission == 'edit',
+          canShare: false,
+        ),
+      );
 
       messenger.showSnackBar(
         SnackBar(
@@ -245,7 +298,7 @@ class _SharedDocumentsScreenState extends State<SharedDocumentsScreen> {
                             itemBuilder: (ctx, idx) {
                               final doc = _sharedDocuments[idx];
                               final isViewOnly = doc.sharePermission == 'view';
-                              final isPdf = doc.name.toLowerCase().endsWith('.pdf');
+                              final isPdf = _resolveDocumentType(doc) == DocumentType.pdf;
 
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 14),

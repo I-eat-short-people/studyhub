@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 import '../database/tables/documents_table.dart';
+import '../utils/file_download_helper.dart';
 
 class PickedFileInfo {
   final String name;
@@ -115,16 +117,16 @@ class FileStorageService {
   }) async {
     try {
       Uint8List? bytes;
-      String extension = 'pdf';
 
+      // 1. Đọc từ đường dẫn tệp nội bộ (Android, Windows, iOS)
       if (sourceFilePath != null && !kIsWeb) {
         final source = File(sourceFilePath);
         if (await source.exists()) {
           bytes = await source.readAsBytes();
-          extension = p.extension(sourceFilePath).replaceAll('.', '');
         }
       }
 
+      // 2. Giải mã từ chuỗi Data URI Base64
       if (bytes == null && fileUrl != null && fileUrl.startsWith('data:')) {
         final commaIdx = fileUrl.indexOf(',');
         if (commaIdx != -1) {
@@ -133,22 +135,39 @@ class FileStorageService {
         }
       }
 
-      if (bytes != null) {
-        final saveUri = await FilePicker.saveFile(
-          dialogTitle: 'Tải tài liệu về máy',
-          fileName: defaultFileName,
-          bytes: bytes,
-          type: FileType.custom,
-          allowedExtensions: [extension.isEmpty ? 'pdf' : extension],
-        );
-        if (saveUri != null) {
-          return saveUri.path;
+      // 3. Tải từ Cloud Storage qua HTTP (Supabase / Firebase download URL)
+      if (bytes == null &&
+          fileUrl != null &&
+          (fileUrl.startsWith('http://') || fileUrl.startsWith('https://'))) {
+        try {
+          final resp = await http.get(Uri.parse(fileUrl));
+          if (resp.statusCode == 200) {
+            bytes = resp.bodyBytes;
+          }
+        } catch (httpErr) {
+          debugPrint('[FileStorageService] Lỗi tải qua HTTP: $httpErr');
         }
-      } else if (fileUrl != null) {
+      }
+
+      // 4. Lưu hoặc tải xuống thông qua FileDownloadHelper
+      if (bytes != null && bytes.isNotEmpty) {
+        final cleanFileName = defaultFileName.contains('.')
+            ? defaultFileName
+            : '$defaultFileName.pdf';
+        final success = await FileDownloadHelper.downloadFile(
+          bytes: bytes,
+          fileName: cleanFileName,
+        );
+        if (success) {
+          return cleanFileName;
+        }
+      } else if (fileUrl != null && !fileUrl.startsWith('data:')) {
         await openUrl(fileUrl);
         return fileUrl;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[FileStorageService] Lỗi exportFile: $e');
+    }
     return null;
   }
 }

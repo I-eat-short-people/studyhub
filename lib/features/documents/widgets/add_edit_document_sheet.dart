@@ -13,17 +13,20 @@ import '../../../core/services/auth_sync_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/cashew_bottom_sheet.dart';
+import '../../map/widgets/location_picker_dialog.dart';
 
 enum DocumentSourceType { file, link }
 
 class AddEditDocumentSheet extends StatefulWidget {
   final Document? document;
   final String? initialSubjectPk;
+  final bool? isReadOnly;
 
   const AddEditDocumentSheet({
     super.key,
     this.document,
     this.initialSubjectPk,
+    this.isReadOnly,
   });
 
   @override
@@ -35,6 +38,7 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
   late TextEditingController _nameController;
   late TextEditingController _urlController;
   late TextEditingController _noteController;
+  late TextEditingController _tagsController;
 
   String? _selectedSubjectPk;
   DocumentSourceType _sourceType = DocumentSourceType.file;
@@ -46,14 +50,45 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
   int _fileSize = 0;
   bool _isPinned = false;
   bool _isLoading = false;
+  bool _isReadOnly = false;
+  DocumentAccessInfo? _accessInfo;
+
+  // Thuộc tính Tag & Vị trí vật lý
+  bool _isPhysical = false;
+  bool _isAvailableForBorrow = false;
+  String? _address;
+  String? _physicalLocation;
+  double? _latitude;
+  double? _longitude;
+
+  final List<String> _suggestedTags = [
+    '#CNTT',
+    '#GiaiTich',
+    '#DeThi',
+    '#Slide',
+    '#GiaoTrinh',
+    '#LapTrinhDiDong',
+    '#AI',
+  ];
 
   @override
   void initState() {
     super.initState();
     final doc = widget.document;
+    final docMeta = SupabaseService.extractMetadataFromNote(doc?.note);
+    final cleanNote = SupabaseService.unpackCleanNote(doc?.note);
+
     _nameController = TextEditingController(text: doc?.name ?? '');
     _urlController = TextEditingController(text: doc?.url ?? '');
-    _noteController = TextEditingController(text: doc?.note ?? '');
+    _noteController = TextEditingController(text: cleanNote);
+    final initialTags = (doc?.tags != null && doc!.tags.isNotEmpty)
+        ? doc.tags
+        : (docMeta['tags'] as String? ?? '');
+    _tagsController = TextEditingController(text: initialTags);
+
+    if (widget.isReadOnly == true) {
+      _isReadOnly = true;
+    }
 
     _selectedSubjectPk = doc?.subjectFk ?? widget.initialSubjectPk;
     if (doc != null) {
@@ -63,13 +98,51 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
         _detectedType = DocumentType.link;
       } else {
         _sourceType = DocumentSourceType.file;
-        _detectedType = doc.type;
+        final urlLower = (doc.url ?? '').toLowerCase();
+        final pathLower = (doc.filePath ?? '').toLowerCase();
+        final nameLower = doc.name.toLowerCase();
+        if (doc.type == DocumentType.word &&
+            (urlLower.contains('.pdf') ||
+                pathLower.endsWith('.pdf') ||
+                nameLower.endsWith('.pdf'))) {
+          _detectedType = DocumentType.pdf;
+        } else {
+          _detectedType = doc.type;
+        }
         _pickedFileName = doc.name;
       }
       _pickedLocalPath = doc.filePath;
       _pickedDataUri = doc.url;
       _fileSize = doc.fileSize;
       _isPinned = doc.isPinned;
+      _isPhysical = doc.isPhysical || (docMeta['is_physical'] as bool? ?? false);
+      _isAvailableForBorrow = doc.isAvailableForBorrow || (docMeta['is_available_for_borrow'] as bool? ?? false);
+      _address = doc.address ?? (docMeta['address'] as String?);
+      _physicalLocation = doc.physicalLocation ?? (docMeta['physical_location'] as String?);
+      _latitude = doc.latitude ?? (docMeta['latitude'] as num?)?.toDouble();
+      _longitude = doc.longitude ?? (docMeta['longitude'] as num?)?.toDouble();
+
+      // Kiểm tra quyền từ cache
+      final cached = supabaseService.getCachedAccessInfo(doc.documentPk);
+      if (cached != null) {
+        _accessInfo = cached;
+        if (widget.isReadOnly != true) {
+          _isReadOnly = !cached.canEdit;
+        }
+      }
+      _checkAccessPermission(doc.documentPk);
+    }
+  }
+
+  Future<void> _checkAccessPermission(String docId) async {
+    final info = await supabaseService.getDocumentAccessInfo(docId);
+    if (mounted) {
+      setState(() {
+        _accessInfo = info;
+        if (widget.isReadOnly != true) {
+          _isReadOnly = !info.canEdit;
+        }
+      });
     }
   }
 
@@ -78,6 +151,7 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
     _nameController.dispose();
     _urlController.dispose();
     _noteController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
@@ -108,6 +182,16 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
   }
 
   Future<void> _save() async {
+    if (_isReadOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bạn chỉ có quyền xem tài liệu này, không thể chỉnh sửa.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSubjectPk == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,6 +234,20 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
       }
 
       final docId = widget.document?.documentPk ?? uuid.v4();
+      final currentOwnerEmail = (authSyncService.user?.email ?? firebaseService.userEmail ?? '').trim().toLowerCase();
+      final userNote = _noteController.text.trim().isEmpty ? null : _noteController.text.trim();
+      final packedLocalNote = SupabaseService.packMetadataIntoNote(
+        note: userNote,
+        tags: _tagsController.text.trim(),
+        isPhysical: _isPhysical,
+        isAvailableForBorrow: _isAvailableForBorrow,
+        physicalLocation: _physicalLocation,
+        address: _address,
+        latitude: _latitude,
+        longitude: _longitude,
+        ownerEmail: currentOwnerEmail.isNotEmpty ? currentOwnerEmail : null,
+      );
+
       final companion = DocumentsCompanion(
         documentPk: drift.Value(docId),
         name: drift.Value(_nameController.text.trim()),
@@ -159,29 +257,55 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
         filePath: drift.Value(savedPath),
         url: drift.Value(finalUrl),
         fileSize: drift.Value(_fileSize),
-        note: drift.Value(
-          _noteController.text.trim().isEmpty
-              ? null
-              : _noteController.text.trim(),
-        ),
+        note: drift.Value(packedLocalNote),
         isPinned: drift.Value(_isPinned),
+        tags: drift.Value(_tagsController.text.trim()),
+        isPhysical: drift.Value(_isPhysical),
+        isAvailableForBorrow: drift.Value(_isAvailableForBorrow),
+        physicalLocation: drift.Value(_physicalLocation),
+        address: drift.Value(_address),
+        latitude: drift.Value(_latitude),
+        longitude: drift.Value(_longitude),
       );
 
       await database.documentDao.insertOrUpdateDocument(companion);
 
-      // TỰ ĐỘNG SAO LƯU LÊN SUPABASE NẾU NGƯỜI DÙNG ĐÃ ĐĂNG NHẬP
+      if (currentOwnerEmail.isNotEmpty) {
+        await supabaseService.registerLocalDocOwner(docId, currentOwnerEmail);
+      }
+
+      // Đóng sheet ngay lập tức để người dùng không phải chờ đợi
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.document != null ? 'Đã lưu thay đổi tài liệu!' : 'Đã thêm tài liệu thành công!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // TỰ ĐỘNG ĐỒNG BỘ NỀN LÊN SUPABASE (BACKGROUND) NẾU ĐÃ ĐĂNG NHẬP
       if (supabaseService.isConfigured &&
           (firebaseService.isLoggedIn || authSyncService.isLoggedIn)) {
         final docName = _nameController.text.trim();
         final selectedSubPk = _selectedSubjectPk!;
         final selectedCat = _selectedCategory;
         final docNote = _noteController.text.trim().isEmpty ? null : _noteController.text.trim();
+        final docTags = _tagsController.text.trim();
+        final docIsPhysical = _isPhysical;
+        final docIsBorrow = _isAvailableForBorrow;
+        final docPhysicalLoc = _physicalLocation;
+        final docAddress = _address;
+        final docLat = _latitude;
+        final docLng = _longitude;
 
         final localSavedPath = savedPath;
         final localFinalUrl = finalUrl;
 
-        // Chạy ngầm trong microtask
-        Future.microtask(() async {
+        // Đồng bộ bất đồng bộ ở nền không làm đơ giao diện
+        Future(() async {
           try {
             Uint8List? fileBytes;
             if (localSavedPath != null && await File(localSavedPath).exists()) {
@@ -191,43 +315,63 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
               if (idx != -1) fileBytes = base64Decode(localFinalUrl.substring(idx + 1));
             }
 
-            if (fileBytes != null && fileBytes.isNotEmpty) {
-              final subjects = await database.select(database.subjects).get();
-              final subMatch = subjects.where((s) => s.subjectPk == selectedSubPk);
-              final subName = subMatch.isNotEmpty ? subMatch.first.name : 'Môn học';
+            final subjects = await database.select(database.subjects).get();
+            final subMatch = subjects.where((s) => s.subjectPk == selectedSubPk);
+            final subName = subMatch.isNotEmpty ? subMatch.first.name : 'Môn học';
 
-              final uploaded = await supabaseService.uploadAndSaveDocument(
-                documentPk: docId,
-                name: docName,
-                subjectName: subName,
-                bytes: fileBytes,
-                fileName: docName.endsWith('.pdf') || docName.endsWith('.docx')
-                    ? docName
-                    : '$docName.pdf',
-                mimeType: finalType == DocumentType.pdf
-                    ? 'application/pdf'
-                    : 'application/octet-stream',
-                category: selectedCat.index,
-                note: docNote,
+            final uploaded = await supabaseService.uploadAndSaveDocument(
+              documentPk: docId,
+              name: docName,
+              subjectName: subName,
+              bytes: fileBytes,
+              downloadUrl: localFinalUrl,
+              fileName: docName.endsWith('.pdf') ||
+                      docName.endsWith('.docx') ||
+                      docName.endsWith('.doc') ||
+                      docName.endsWith('.pptx') ||
+                      docName.endsWith('.ppt')
+                  ? docName
+                  : (finalType == DocumentType.pdf
+                      ? '$docName.pdf'
+                      : (finalType == DocumentType.word
+                          ? '$docName.docx'
+                          : (finalType == DocumentType.ppt
+                              ? '$docName.pptx'
+                              : docName))),
+              mimeType: finalType == DocumentType.pdf
+                  ? 'application/pdf'
+                  : (finalType == DocumentType.word
+                      ? 'application/msword'
+                      : (finalType == DocumentType.ppt
+                          ? 'application/vnd.ms-powerpoint'
+                          : 'application/octet-stream')),
+              category: selectedCat.index,
+              note: docNote,
+              tags: docTags,
+              isPhysical: docIsPhysical,
+              isAvailableForBorrow: docIsBorrow,
+              physicalLocation: docPhysicalLoc,
+              address: docAddress,
+              latitude: docLat,
+              longitude: docLng,
+              customOwnerEmail: currentOwnerEmail,
+              notify: false,
+            );
+
+            if (uploaded != null && uploaded.downloadUrl != null && uploaded.downloadUrl != localFinalUrl) {
+              await database.documentDao.updateDocumentUrl(
+                docId,
+                uploaded.downloadUrl!,
               );
-
-              if (uploaded != null && uploaded.downloadUrl != null) {
-                await database.documentDao.insertOrUpdateDocument(
-                  DocumentsCompanion(
-                    documentPk: drift.Value(docId),
-                    url: drift.Value(uploaded.downloadUrl),
-                  ),
-                );
-                debugPrint('[AutoSync] Tự động sao lưu tài liệu "$docName" lên Supabase thành công!');
-              }
+            }
+            if (uploaded != null) {
+              debugPrint('[AutoSync] Tự động sao lưu tài liệu "$docName" lên Supabase thành công!');
             }
           } catch (autoErr) {
-            debugPrint('[AutoSync] Lỗi tự động sao lưu: $autoErr');
+            debugPrint('[AutoSync] Lỗi tự động sao lưu nền: $autoErr');
           }
         });
       }
-
-      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -240,6 +384,16 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
   }
 
   Future<void> _delete() async {
+    if (_accessInfo?.isOwner == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bạn không có quyền xoá tài liệu được chia sẻ'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -262,14 +416,27 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
     );
 
     if (confirmed == true && mounted) {
-      await database.documentDao
-          .deleteDocumentSafely(widget.document!.documentPk);
+      final docPk = widget.document!.documentPk;
+      // 1. Xoá trên Supabase Cloud
+      if (supabaseService.isConfigured) {
+        await supabaseService.deleteCloudDocument(docPk);
+      }
+      // 2. Xoá file đĩa cục bộ
+      if (widget.document!.filePath != null) {
+        try {
+          final f = File(widget.document!.filePath!);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+      // 3. Xoá trong SQLite
+      await database.documentDao.deleteDocumentSafely(docPk);
       if (mounted) Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isEdit = widget.document != null;
     final textLightColor = getColor(context, 'textLight');
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -289,14 +456,20 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isEdit ? 'Sửa tài liệu' : 'Thêm tài liệu mới',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      _isReadOnly
+                          ? 'Chi tiết tài liệu (Chỉ xem)'
+                          : (isEdit ? 'Sửa tài liệu' : 'Thêm tài liệu mới'),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (isEdit)
+                  if (isEdit && !_isReadOnly && (_accessInfo?.isOwner ?? true))
                     IconButton(
                       icon: Icon(
                         Icons.delete_outline_rounded,
@@ -307,7 +480,35 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              if (_isReadOnly) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded, color: Colors.blue.shade800, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Tài liệu này được chia sẻ bởi ${_accessInfo?.ownerEmail ?? 'chủ tài liệu'} với quyền "Chỉ xem". Bạn không thể chỉnh sửa mô tả hoặc nội dung.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // Subject Dropdown (isExpanded: true to prevent overflow with long names)
               StreamBuilder<List<Subject>>(
@@ -335,8 +536,9 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (val) =>
-                        setState(() => _selectedSubjectPk = val),
+                    onChanged: _isReadOnly
+                        ? null
+                        : (val) => setState(() => _selectedSubjectPk = val),
                     validator: (val) =>
                         val == null ? 'Vui lòng chọn môn học' : null,
                   );
@@ -364,9 +566,11 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                     ),
                   );
                 }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedCategory = val);
-                },
+                onChanged: _isReadOnly
+                    ? null
+                    : (val) {
+                        if (val != null) setState(() => _selectedCategory = val);
+                      },
               ),
               const SizedBox(height: 14),
 
@@ -383,11 +587,13 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                     Expanded(
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          setState(() {
-                            _sourceType = DocumentSourceType.file;
-                          });
-                        },
+                        onTap: _isReadOnly
+                            ? null
+                            : () {
+                                setState(() {
+                                  _sourceType = DocumentSourceType.file;
+                                });
+                              },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
@@ -426,12 +632,14 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                     Expanded(
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          setState(() {
-                            _sourceType = DocumentSourceType.link;
-                            _detectedType = DocumentType.link;
-                          });
-                        },
+                        onTap: _isReadOnly
+                            ? null
+                            : () {
+                                setState(() {
+                                  _sourceType = DocumentSourceType.link;
+                                  _detectedType = DocumentType.link;
+                                });
+                              },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
@@ -485,7 +693,7 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  onPressed: _pickFile,
+                  onPressed: _isReadOnly ? null : _pickFile,
                   icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white),
                   label: const Text(
                     'Tải tệp lên',
@@ -580,6 +788,7 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
               // Document Name Input
               TextFormField(
                 controller: _nameController,
+                readOnly: _isReadOnly,
                 decoration: const InputDecoration(
                   labelText: 'Tên tài liệu',
                   hintText: 'Nhập tiêu đề hoặc tên tài liệu',
@@ -594,14 +803,164 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
               // Note Input: Centered vertically when 1 line, expands when typing longer text
               TextFormField(
                 controller: _noteController,
+                readOnly: _isReadOnly,
                 minLines: 1,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  labelText: 'Ghi chú',
-                  hintText: 'Ghi chú',
+                  labelText: 'Ghi chú / Mô tả',
+                  hintText: 'Ghi chú hoặc mô tả tài liệu',
                   prefixIcon: Icon(Icons.notes_rounded),
                 ),
               ),
+              const SizedBox(height: 14),
+
+              // Tag Input
+              TextFormField(
+                controller: _tagsController,
+                readOnly: _isReadOnly,
+                decoration: const InputDecoration(
+                  labelText: 'Tags phân loại (phân cách bằng dấu phẩy)',
+                  hintText: 'Vd: #CNTT, #GiaiTich, #DeThi2024',
+                  prefixIcon: Icon(Icons.tag_rounded),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Tag Suggestion Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _suggestedTags.map((tag) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ActionChip(
+                        label: Text(tag, style: const TextStyle(fontSize: 12)),
+                        onPressed: _isReadOnly
+                            ? null
+                            : () {
+                                final current = _tagsController.text.trim();
+                                if (current.isEmpty) {
+                                  _tagsController.text = tag;
+                                } else if (!current.contains(tag)) {
+                                  _tagsController.text = '$current, $tag';
+                                }
+                              },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Physical Document Switch
+              SwitchListTile(
+                value: _isPhysical,
+                onChanged: _isReadOnly
+                    ? null
+                    : (val) => setState(() => _isPhysical = val),
+                title: const Text(
+                  'Sách / Tài liệu giấy bản cứng',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'Quản lý vị trí lưu trữ thực tế và cho mượn',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                secondary: Icon(
+                  _isPhysical ? Icons.menu_book_rounded : Icons.menu_book_outlined,
+                  color: _isPhysical ? const Color(0xFF3F51B5) : textLightColor,
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+
+              // Location & Borrowing Settings when _isPhysical is true
+              if (_isPhysical) ...[
+                Container(
+                  margin: const EdgeInsets.only(top: 8, bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3F51B5).withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF3F51B5).withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: Colors.redAccent, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _address != null && _address!.isNotEmpty
+                                  ? _address!
+                                  : 'Chưa chọn vị trí lưu trữ',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_physicalLocation != null && _physicalLocation!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 28),
+                          child: Text(
+                            'Chi tiết kệ/tủ: $_physicalLocation',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF3F51B5)),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.map_rounded, size: 18),
+                        label: Text(
+                          _address == null ? 'Ghim vị trí trên Bản đồ' : 'Thay đổi vị trí',
+                        ),
+                        onPressed: _isReadOnly
+                            ? null
+                            : () async {
+                                final res = await showDialog<LocationPickResult>(
+                                  context: context,
+                                  builder: (_) => LocationPickerDialog(
+                                    initialAddress: _address,
+                                    initialPhysicalLocation: _physicalLocation,
+                                    initialLatitude: _latitude,
+                                    initialLongitude: _longitude,
+                                  ),
+                                );
+                                if (res != null) {
+                                  setState(() {
+                                    _address = res.address;
+                                    _physicalLocation = res.physicalLocation;
+                                    _latitude = res.latitude;
+                                    _longitude = res.longitude;
+                                  });
+                                }
+                              },
+                      ),
+                      const Divider(height: 20),
+                      SwitchListTile(
+                        value: _isAvailableForBorrow,
+                        onChanged: _isReadOnly
+                            ? null
+                            : (val) => setState(() => _isAvailableForBorrow = val),
+                        title: const Text(
+                          'Sẵn sàng cho mượn',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        subtitle: const Text(
+                          'Hiển thị trên Bản đồ cộng đồng để các bạn khác gửi yêu cầu mượn',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
 
               // Pinned Switch
@@ -622,16 +981,23 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Save Button
+              // Save / Close Button
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3F51B5),
+                  backgroundColor: _isReadOnly
+                      ? theme.colorScheme.surfaceContainerHighest
+                      : const Color(0xFF3F51B5),
+                  foregroundColor: _isReadOnly
+                      ? theme.colorScheme.onSurface
+                      : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: _isLoading ? null : _save,
+                onPressed: _isReadOnly
+                    ? () => Navigator.pop(context)
+                    : (_isLoading ? null : _save),
                 child: _isLoading
                     ? const SizedBox(
                         width: 20,
@@ -642,7 +1008,9 @@ class _AddEditDocumentSheetState extends State<AddEditDocumentSheet> {
                         ),
                       )
                     : Text(
-                        isEdit ? 'Lưu thay đổi' : 'Thêm tài liệu',
+                        _isReadOnly
+                            ? 'Đóng'
+                            : (isEdit ? 'Lưu thay đổi' : 'Thêm tài liệu'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

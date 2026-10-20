@@ -57,6 +57,33 @@
 | **FR-FAV-01** | Đánh dấu sao một chạm | Chạm vào biểu tượng ngôi sao trên Card tài liệu để bật/tắt trạng thái `isPinned`. Giao diện cập nhật tức thì với màu vàng sao chuẩn Cashew (`starYellow = #FFB300`). |
 | **FR-FAV-02** | Màn hình Tài liệu Quan trọng | Tab riêng biệt chuyên hiển thị toàn bộ tài liệu đã được gắn sao, hỗ trợ tìm kiếm riêng trong danh mục quan trọng. |
 
+### 3.6. Phân hệ Bộ lọc Nâng cao (Advanced Filter)
+| Mã yêu cầu | Tên chức năng | Mô tả chi tiết |
+|---|---|---|
+| **FR-FLT-01** | Hộp thoại Lọc Nâng cao gom cụm | Gom toàn bộ tiêu chí lọc rườm rà vào một nút "Lọc nâng cao". Hộp thoại hỗ trợ lọc đa chiều: Loại tài liệu (Bài giảng/Bài tập/Đề thi/Khác), Định dạng file (PDF, Word, PPT, Link), và Môn học liên kết. |
+| **FR-FLT-02** | Cơ chế Áp dụng Hoãn lại (Deferred Apply) | Khi người dùng tương tác với các chip lọc trong hộp thoại, danh sách nền không bị lọc giật cục. Bộ lọc chỉ thực sự có hiệu lực khi người dùng nhấn nút "Áp dụng bộ lọc". Có nút "Đặt lại" để xóa nhanh mọi tiêu chí. |
+
+### 3.7. Phân hệ Mượn - Trả Tài liệu Học tập (Borrow & Lending Management)
+| Mã yêu cầu | Tên chức năng | Mô tả chi tiết |
+|---|---|---|
+| **FR-BRW-01** | Gửi yêu cầu mượn sách vật lý | Người dùng khám phá sách của bạn bè/cộng đồng, chọn thời hạn cần mượn, nhập ghi chú lời nhắn và gửi yêu cầu mượn trực tiếp lên Cloud Supabase. |
+| **FR-BRW-02** | Quản lý Yêu cầu đã gửi | Xem danh sách các yêu cầu mượn mình đã gửi kèm trạng thái: Đang chờ duyệt, Đã chấp thuận, Đã từ chối, Đang mượn, Đã hoàn trả. Cho phép hủy yêu cầu khi chủ sách chưa duyệt; xem vị trí kệ sách khi đã được duyệt. |
+| **FR-BRW-03** | Quản lý Yêu cầu nhận được (Dành cho chủ sách) | Chủ sở hữu sách nhận thông báo yêu cầu mượn, xem thông tin người mượn và thực hiện: Duyệt cho mượn (kèm ghi chú điểm hẹn), Từ chối cho mượn, hoặc Xác nhận đã nhận lại sách khi người mượn trả xong. |
+
+### 3.8. Phân hệ Bản đồ Tài liệu & Kệ sách Vật lý (Bookshelf Map Explorer)
+| Mã yêu cầu | Tên chức năng | Mô tả chi tiết |
+|---|---|---|
+| **FR-MAP-01** | Trực quan hóa điểm ghim sách trên Bản đồ | Sử dụng `flutter_map` và OpenStreetMap để hiển thị tọa độ GPS các cuốn sách giáo trình, tài liệu vật lý trong khuôn viên trường hoặc khu vực lân cận mà không phụ thuộc Google Maps API có phí. |
+| **FR-MAP-02** | Phân quyền tương tác theo chủ sở hữu | Chạm vào một điểm ghim trên bản đồ: <br>- **Nếu là sách của chính mình:** Hiển thị nút "Xem thông tin sách" và tình trạng mượn hiện tại (chưa cho ai mượn / đang cho bạn mượn), không hiển thị nút "Yêu cầu mượn".<br>- **Nếu là sách của người khác:** Hiển thị nút "Yêu cầu mượn". |
+| **FR-MAP-03** | Ghim vị trí ngăn kệ và địa chỉ cụ thể | Khi thêm hoặc sửa tài liệu vật lý, cho phép ghim trực tiếp vị trí ngăn/tủ/kệ sách (ví dụ: Tủ A3 - Tầng 2 Thư viện) và chọn tọa độ trên bản đồ qua hộp thoại tương tác. |
+
+### 3.9. Phân hệ Gợi ý Học tập & Trung tâm Thông báo (Smart Engine & Notifications)
+| Mã yêu cầu | Tên chức năng | Mô tả chi tiết |
+|---|---|---|
+| **FR-REC-01** | Top 10 gợi ý tài liệu thông minh | Động cơ đề xuất chạy cục bộ dựa trên độ tương đồng Jaccard giữa Tag sở thích của sinh viên và Tag tài liệu, kết hợp trọng số môn học quan tâm. Tự động loại trừ sách của chính người dùng khỏi danh sách gợi ý. |
+| **FR-NTF-01** | Chuông thông báo & Trung tâm tin tức | Biểu tượng chuông trên AppBar với huy hiệu số lượng thông báo chưa đọc. Tự động phát hiện và thông báo: Yêu cầu mượn mới, Yêu cầu được chấp thuận/từ chối, Cảnh báo hạn trả sách. Chạm vào thông báo tự động điều hướng đúng phân hệ. |
+| **FR-NTF-02** | Hồ sơ cá nhân & Đồng bộ Google | Avatar người dùng ở góc trên bên phải AppBar, hiển thị ảnh Google nếu đã đăng nhập hoặc icon mặc định nếu chưa đăng nhập. Hỗ trợ xem trạng thái đồng bộ và đăng xuất an toàn. |
+
 ---
 
 ## 4. YÊU CẦU PHI CHỨC NĂNG (NON-FUNCTIONAL REQUIREMENTS)

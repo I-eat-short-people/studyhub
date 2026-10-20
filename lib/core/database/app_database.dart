@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -32,6 +32,15 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (Migrator m, int from, int to) async {
           if (from < 2) {
             await m.addColumn(documents, documents.category);
+          }
+          if (from < 3) {
+            await m.addColumn(documents, documents.tags);
+            await m.addColumn(documents, documents.isPhysical);
+            await m.addColumn(documents, documents.isAvailableForBorrow);
+            await m.addColumn(documents, documents.physicalLocation);
+            await m.addColumn(documents, documents.address);
+            await m.addColumn(documents, documents.latitude);
+            await m.addColumn(documents, documents.longitude);
           }
         },
       );

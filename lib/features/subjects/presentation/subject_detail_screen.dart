@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_global.dart';
-import '../../../core/database/tables/documents_table.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/cashew_bottom_sheet.dart';
@@ -35,7 +34,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final textLightColor = getColor(context, 'textLight');
-    final subjectColor = Color(widget.subject.color);
 
     return Scaffold(
       appBar: AppBar(
@@ -286,6 +284,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                   );
                 }
 
+                final isWide = MediaQuery.of(context).size.width >= 600;
+                if (!isWide) {
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      return DocumentCard(document: docs[index]);
+                    },
+                  );
+                }
+
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                   gridDelegate:
@@ -293,7 +303,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                     maxCrossAxisExtent: 460,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
-                    mainAxisExtent: 220,
+                    mainAxisExtent: 132,
                   ),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {

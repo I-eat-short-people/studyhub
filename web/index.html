@@ -6,6 +6,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="StudyHub - Quản lý tài liệu học tập theo kiến trúc Cashew">
+  <meta name="google-signin-client_id" content="749333059425-h2ssnacgt3l0b8kai5kurq8p135gk6mh.apps.googleusercontent.com">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -21,6 +22,15 @@
 
   <!-- Cashew Web SQLite sql.js support -->
   <script defer src="sql-wasm.js"></script>
+
+  <!-- Syncfusion PDF Viewer Web Support -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script type="text/javascript">
+    window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

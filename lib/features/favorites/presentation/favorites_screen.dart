@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/google_sync_dialog.dart';
 import '../../documents/widgets/document_card.dart';
 
+import '../../../core/services/auth_sync_service.dart';
+
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
 
@@ -17,9 +19,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    authSyncService.addListener(_onAuthChange);
+  }
+
+  @override
   void dispose() {
+    authSyncService.removeListener(_onAuthChange);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onAuthChange() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -124,14 +137,29 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   );
                 }
 
+                final currentEmail = authSyncService.user?.email ?? 'guest';
+                final isWide = MediaQuery.of(context).size.width >= 600;
+                if (!isWide) {
+                  return ListView.separated(
+                    key: ValueKey('fav_list_$currentEmail'),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      return DocumentCard(document: docs[index]);
+                    },
+                  );
+                }
+
                 return GridView.builder(
+                  key: ValueKey('fav_grid_$currentEmail'),
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                   gridDelegate:
                       const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 460,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
-                    mainAxisExtent: 220,
+                    mainAxisExtent: 132,
                   ),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {

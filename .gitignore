@@ -52,4 +52,10 @@ app.*.map.json
 lib/core/config/supabase_config.dart
 *.env
 .env*
+
+# AI
 AI_SECURITY_MISTAKES_GUIDE.md
+AI_FLUTTER_UI_UX_GUIDE.md
+KIEN_THUC_KY_THUAT_VA_KIEN_TRUC.md
+KIEN_THUC_TU_DUY_SAN_PHAM.md
+HUONG_DAN_COMMIT_THANH_VIEN.md

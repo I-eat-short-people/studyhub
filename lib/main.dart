@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/database/database_global.dart';
 import 'core/database/platform/shared.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/firebase_notification_service.dart';
+import 'core/services/app_notification_service.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/presentation/home_screen.dart';
@@ -17,16 +20,25 @@ void main() async {
 
   // Khởi tạo Firebase Service (Authentication & Cloud Storage)
   try {
-    await FirebaseService().initialize();
+    await firebaseService.initialize();
+    await firebaseNotificationService.initialize();
   } catch (e) {
     debugPrint('Firebase init fallback: $e');
   }
 
   // Khởi tạo Supabase Service (Cloud Storage & Document Sharing)
   try {
-    await SupabaseService().initialize();
+    await supabaseService.initialize();
+    unawaited(supabaseService.purgeDeletedDocumentsFromCloud());
   } catch (e) {
     debugPrint('Supabase init fallback: $e');
+  }
+
+  // Khởi tạo hệ thống thông báo tổng hợp (Mượn trả & Chia sẻ)
+  try {
+    await appNotificationService.initialize();
+  } catch (e) {
+    debugPrint('App notification init fallback: $e');
   }
 
   runApp(const StudyHubApp());

@@ -6,6 +6,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/file_storage_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/supabase_service.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final Document document;
@@ -28,10 +29,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       fileUrl: doc.url,
       defaultFileName: doc.name.endsWith('.pdf') ? doc.name : '${doc.name}.pdf',
     );
-    if (mounted && saved != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã tải tài liệu: $saved')),
-      );
+    if (mounted) {
+      if (saved != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã tải tài liệu "$saved" về máy thành công!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể tải xuống tệp này')),
+        );
+      }
     }
   }
 
@@ -51,13 +58,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            if (doc.note != null && doc.note!.isNotEmpty)
-              Text(
-                doc.note!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: textLightColor),
-              ),
+            Builder(
+              builder: (_) {
+                final cleanNote = SupabaseService.unpackCleanNote(doc.note);
+                if (cleanNote.isEmpty) return const SizedBox.shrink();
+                return Text(
+                  cleanNote,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: textLightColor),
+                );
+              },
+            ),
           ],
         ),
         actions: [

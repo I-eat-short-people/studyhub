@@ -1,7 +1,5 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
-import '../tables/documents_table.dart';
-import '../tables/delete_logs_table.dart';
 
 part 'document_dao.g.dart';
 
@@ -35,6 +33,8 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
     String? subjectPk,
     DocumentType? type,
     DocumentCategory? category,
+    String? tag,
+    bool? isPhysicalOnly,
     String sortBy = 'date', // 'date' or 'name'
     bool ascending = false,
   }) {
@@ -44,7 +44,8 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
       final q = '%${query.trim().toLowerCase()}%';
       s.where((d) =>
           d.name.lower().like(q) |
-          (d.note.isNotNull() & d.note.lower().like(q)));
+          (d.note.isNotNull() & d.note.lower().like(q)) |
+          d.tags.lower().like(q));
     }
 
     if (subjectPk != null && subjectPk.isNotEmpty) {
@@ -59,6 +60,14 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
       s.where((d) => d.category.equals(category.index));
     }
 
+    if (tag != null && tag.trim().isNotEmpty) {
+      s.where((d) => d.tags.lower().like('%${tag.trim().toLowerCase()}%'));
+    }
+
+    if (isPhysicalOnly == true) {
+      s.where((d) => d.isPhysical.equals(true));
+    }
+
     s.orderBy([
       (d) {
         final column = sortBy == 'name' ? d.name : d.dateCreated;
@@ -70,6 +79,19 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
     ]);
 
     return s.watch();
+  }
+
+  Stream<List<Document>> watchPhysicalDocuments() {
+    return (select(documents)
+          ..where((d) => d.isPhysical.equals(true))
+          ..orderBy([(d) => OrderingTerm.desc(d.dateCreated)]))
+        .watch();
+  }
+
+  Future<List<Document>> getAllPhysicalDocuments() {
+    return (select(documents)
+          ..where((d) => d.isPhysical.equals(true) & d.latitude.isNotNull() & d.longitude.isNotNull()))
+        .get();
   }
 
   Future<Document?> getDocument(String pk) {
@@ -101,6 +123,24 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  Future<void> updateDocumentUrl(String pk, String url) async {
+    await (update(documents)..where((d) => d.documentPk.equals(pk))).write(
+      DocumentsCompanion(
+        url: Value(url),
+        dateTimeModified: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateDocumentType(String pk, DocumentType type) async {
+    await (update(documents)..where((d) => d.documentPk.equals(pk))).write(
+      DocumentsCompanion(
+        type: Value(type),
+        dateTimeModified: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<void> deleteDocumentSafely(String pk) async {
     await transaction(() async {
       await (delete(documents)..where((d) => d.documentPk.equals(pk))).go();
@@ -112,5 +152,12 @@ class DocumentDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     });
+  }
+
+  Future<Set<String>> getDeletedDocumentPks() async {
+    final logs = await (select(deleteLogs)
+          ..where((l) => l.type.equals(DeleteLogType.document.index)))
+        .get();
+    return logs.map((l) => l.entryPk).toSet();
   }
 }

@@ -18,14 +18,31 @@ CREATE TABLE IF NOT EXISTS public.documents (
     download_url TEXT,                             -- Link tải hoặc preview file
     category INTEGER DEFAULT 0,                    -- 0: lecture, 1: reference, 2: exercise, 3: exam
     note TEXT,                                     -- Ghi chú kèm theo tài liệu
+    tags TEXT DEFAULT '',                          -- Chuỗi các tag phân loại, vd: '#CNTT, #GiaiTich'
+    is_physical BOOLEAN DEFAULT FALSE,             -- Có phải tài liệu/sách bản cứng không
+    is_available_for_borrow BOOLEAN DEFAULT FALSE, -- Có sẵn sàng cho mượn không
+    physical_location TEXT,                        -- Vị trí vi mô (Tủ 3, Kệ A)
+    address TEXT,                                  -- Vị trí vĩ mô (Thư viện ĐHBK Hà Nội)
+    latitude DOUBLE PRECISION,                     -- Tọa độ GPS Lat
+    longitude DOUBLE PRECISION,                    -- Tọa độ GPS Lng
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Thêm cột nếu bảng đã tồn tại
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS tags TEXT DEFAULT '';
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS is_physical BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS is_available_for_borrow BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS physical_location TEXT;
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 
 -- Tạo Index để truy vấn nhanh theo chủ sở hữu và ngày tạo
 CREATE INDEX IF NOT EXISTS idx_documents_owner_email ON public.documents(owner_email);
 CREATE INDEX IF NOT EXISTS idx_documents_owner_uid ON public.documents(owner_uid);
 CREATE INDEX IF NOT EXISTS idx_documents_created_at ON public.documents(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_is_physical ON public.documents(is_physical);
 
 -- 2. TẠO BẢNG DOCUMENT_SHARES (Phân quyền chia sẻ tài liệu giữa người dùng)
 CREATE TABLE IF NOT EXISTS public.document_shares (
@@ -42,12 +59,35 @@ CREATE TABLE IF NOT EXISTS public.document_shares (
 CREATE INDEX IF NOT EXISTS idx_shares_shared_with_email ON public.document_shares(shared_with_email);
 CREATE INDEX IF NOT EXISTS idx_shares_document_id ON public.document_shares(document_id);
 
--- 3. CẤU HÌNH BẢO MẬT & QUYỀN TRUY CẬP (Row Level Security - RLS) CHO DATABASE
+-- 3. TẠO BẢNG BORROW_REQUESTS (Luồng nghiệp vụ mượn tài liệu P2P)
+CREATE TABLE IF NOT EXISTS public.borrow_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id TEXT NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
+    borrower_uid TEXT NOT NULL,                    -- Firebase UID người mượn
+    borrower_email TEXT NOT NULL,                  -- Email người mượn
+    borrower_name TEXT,                            -- Tên hiển thị người mượn
+    owner_uid TEXT NOT NULL,                       -- Firebase UID người cho mượn (chủ sách)
+    owner_email TEXT NOT NULL,                     -- Email người cho mượn
+    status TEXT DEFAULT 'pending',                 -- 'pending', 'approved', 'rejected', 'borrowed', 'returned'
+    borrow_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    due_date TIMESTAMP WITH TIME ZONE,             -- Ngày hẹn trả
+    returned_date TIMESTAMP WITH TIME ZONE,        -- Ngày thực tế đã trả
+    note TEXT,                                     -- Lời nhắn / Ghi chú mượn
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_borrow_borrower ON public.borrow_requests(borrower_email);
+CREATE INDEX IF NOT EXISTS idx_borrow_owner ON public.borrow_requests(owner_email);
+CREATE INDEX IF NOT EXISTS idx_borrow_status ON public.borrow_requests(status);
+
+-- 4. CẤU HÌNH BẢO MẬT & QUYỀN TRUY CẬP (Row Level Security - RLS) CHO DATABASE
 GRANT ALL ON TABLE public.documents TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.document_shares TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.borrow_requests TO anon, authenticated, service_role;
 
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.document_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.borrow_requests ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow anon read write documents" ON public.documents;
 CREATE POLICY "Allow anon read write documents" ON public.documents
@@ -56,6 +96,11 @@ CREATE POLICY "Allow anon read write documents" ON public.documents
 
 DROP POLICY IF EXISTS "Allow anon read write shares" ON public.document_shares;
 CREATE POLICY "Allow anon read write shares" ON public.document_shares
+    FOR ALL TO public
+    USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read write borrow_requests" ON public.borrow_requests;
+CREATE POLICY "Allow anon read write borrow_requests" ON public.borrow_requests
     FOR ALL TO public
     USING (true) WITH CHECK (true);
 

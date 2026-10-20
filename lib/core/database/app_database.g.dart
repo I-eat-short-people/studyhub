@@ -590,6 +590,89 @@ class $DocumentsTable extends Documents
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _tagsMeta = const VerificationMeta('tags');
+  @override
+  late final GeneratedColumn<String> tags = GeneratedColumn<String>(
+    'tags',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isPhysicalMeta = const VerificationMeta(
+    'isPhysical',
+  );
+  @override
+  late final GeneratedColumn<bool> isPhysical = GeneratedColumn<bool>(
+    'is_physical',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_physical" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isAvailableForBorrowMeta =
+      const VerificationMeta('isAvailableForBorrow');
+  @override
+  late final GeneratedColumn<bool> isAvailableForBorrow = GeneratedColumn<bool>(
+    'is_available_for_borrow',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_available_for_borrow" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _physicalLocationMeta = const VerificationMeta(
+    'physicalLocation',
+  );
+  @override
+  late final GeneratedColumn<String> physicalLocation = GeneratedColumn<String>(
+    'physical_location',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dateCreatedMeta = const VerificationMeta(
     'dateCreated',
   );
@@ -627,6 +710,13 @@ class $DocumentsTable extends Documents
     fileSize,
     note,
     isPinned,
+    tags,
+    isPhysical,
+    isAvailableForBorrow,
+    physicalLocation,
+    address,
+    latitude,
+    longitude,
     dateCreated,
     dateTimeModified,
   ];
@@ -692,6 +782,54 @@ class $DocumentsTable extends Documents
       context.handle(
         _isPinnedMeta,
         isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta),
+      );
+    }
+    if (data.containsKey('tags')) {
+      context.handle(
+        _tagsMeta,
+        tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta),
+      );
+    }
+    if (data.containsKey('is_physical')) {
+      context.handle(
+        _isPhysicalMeta,
+        isPhysical.isAcceptableOrUnknown(data['is_physical']!, _isPhysicalMeta),
+      );
+    }
+    if (data.containsKey('is_available_for_borrow')) {
+      context.handle(
+        _isAvailableForBorrowMeta,
+        isAvailableForBorrow.isAcceptableOrUnknown(
+          data['is_available_for_borrow']!,
+          _isAvailableForBorrowMeta,
+        ),
+      );
+    }
+    if (data.containsKey('physical_location')) {
+      context.handle(
+        _physicalLocationMeta,
+        physicalLocation.isAcceptableOrUnknown(
+          data['physical_location']!,
+          _physicalLocationMeta,
+        ),
+      );
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
       );
     }
     if (data.containsKey('date_created')) {
@@ -765,6 +903,34 @@ class $DocumentsTable extends Documents
         DriftSqlType.bool,
         data['${effectivePrefix}is_pinned'],
       )!,
+      tags: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags'],
+      )!,
+      isPhysical: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_physical'],
+      )!,
+      isAvailableForBorrow: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_available_for_borrow'],
+      )!,
+      physicalLocation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}physical_location'],
+      ),
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      ),
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
       dateCreated: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}date_created'],
@@ -798,6 +964,13 @@ class Document extends DataClass implements Insertable<Document> {
   final int fileSize;
   final String? note;
   final bool isPinned;
+  final String tags;
+  final bool isPhysical;
+  final bool isAvailableForBorrow;
+  final String? physicalLocation;
+  final String? address;
+  final double? latitude;
+  final double? longitude;
   final DateTime dateCreated;
   final DateTime dateTimeModified;
   const Document({
@@ -811,6 +984,13 @@ class Document extends DataClass implements Insertable<Document> {
     required this.fileSize,
     this.note,
     required this.isPinned,
+    required this.tags,
+    required this.isPhysical,
+    required this.isAvailableForBorrow,
+    this.physicalLocation,
+    this.address,
+    this.latitude,
+    this.longitude,
     required this.dateCreated,
     required this.dateTimeModified,
   });
@@ -839,6 +1019,21 @@ class Document extends DataClass implements Insertable<Document> {
       map['note'] = Variable<String>(note);
     }
     map['is_pinned'] = Variable<bool>(isPinned);
+    map['tags'] = Variable<String>(tags);
+    map['is_physical'] = Variable<bool>(isPhysical);
+    map['is_available_for_borrow'] = Variable<bool>(isAvailableForBorrow);
+    if (!nullToAbsent || physicalLocation != null) {
+      map['physical_location'] = Variable<String>(physicalLocation);
+    }
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
     map['date_created'] = Variable<DateTime>(dateCreated);
     map['date_time_modified'] = Variable<DateTime>(dateTimeModified);
     return map;
@@ -858,6 +1053,21 @@ class Document extends DataClass implements Insertable<Document> {
       fileSize: Value(fileSize),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isPinned: Value(isPinned),
+      tags: Value(tags),
+      isPhysical: Value(isPhysical),
+      isAvailableForBorrow: Value(isAvailableForBorrow),
+      physicalLocation: physicalLocation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(physicalLocation),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
       dateCreated: Value(dateCreated),
       dateTimeModified: Value(dateTimeModified),
     );
@@ -883,6 +1093,15 @@ class Document extends DataClass implements Insertable<Document> {
       fileSize: serializer.fromJson<int>(json['fileSize']),
       note: serializer.fromJson<String?>(json['note']),
       isPinned: serializer.fromJson<bool>(json['isPinned']),
+      tags: serializer.fromJson<String>(json['tags']),
+      isPhysical: serializer.fromJson<bool>(json['isPhysical']),
+      isAvailableForBorrow: serializer.fromJson<bool>(
+        json['isAvailableForBorrow'],
+      ),
+      physicalLocation: serializer.fromJson<String?>(json['physicalLocation']),
+      address: serializer.fromJson<String?>(json['address']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
       dateCreated: serializer.fromJson<DateTime>(json['dateCreated']),
       dateTimeModified: serializer.fromJson<DateTime>(json['dateTimeModified']),
     );
@@ -905,6 +1124,13 @@ class Document extends DataClass implements Insertable<Document> {
       'fileSize': serializer.toJson<int>(fileSize),
       'note': serializer.toJson<String?>(note),
       'isPinned': serializer.toJson<bool>(isPinned),
+      'tags': serializer.toJson<String>(tags),
+      'isPhysical': serializer.toJson<bool>(isPhysical),
+      'isAvailableForBorrow': serializer.toJson<bool>(isAvailableForBorrow),
+      'physicalLocation': serializer.toJson<String?>(physicalLocation),
+      'address': serializer.toJson<String?>(address),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
       'dateCreated': serializer.toJson<DateTime>(dateCreated),
       'dateTimeModified': serializer.toJson<DateTime>(dateTimeModified),
     };
@@ -921,6 +1147,13 @@ class Document extends DataClass implements Insertable<Document> {
     int? fileSize,
     Value<String?> note = const Value.absent(),
     bool? isPinned,
+    String? tags,
+    bool? isPhysical,
+    bool? isAvailableForBorrow,
+    Value<String?> physicalLocation = const Value.absent(),
+    Value<String?> address = const Value.absent(),
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
     DateTime? dateCreated,
     DateTime? dateTimeModified,
   }) => Document(
@@ -934,6 +1167,15 @@ class Document extends DataClass implements Insertable<Document> {
     fileSize: fileSize ?? this.fileSize,
     note: note.present ? note.value : this.note,
     isPinned: isPinned ?? this.isPinned,
+    tags: tags ?? this.tags,
+    isPhysical: isPhysical ?? this.isPhysical,
+    isAvailableForBorrow: isAvailableForBorrow ?? this.isAvailableForBorrow,
+    physicalLocation: physicalLocation.present
+        ? physicalLocation.value
+        : this.physicalLocation,
+    address: address.present ? address.value : this.address,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
     dateCreated: dateCreated ?? this.dateCreated,
     dateTimeModified: dateTimeModified ?? this.dateTimeModified,
   );
@@ -951,6 +1193,19 @@ class Document extends DataClass implements Insertable<Document> {
       fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
       note: data.note.present ? data.note.value : this.note,
       isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
+      tags: data.tags.present ? data.tags.value : this.tags,
+      isPhysical: data.isPhysical.present
+          ? data.isPhysical.value
+          : this.isPhysical,
+      isAvailableForBorrow: data.isAvailableForBorrow.present
+          ? data.isAvailableForBorrow.value
+          : this.isAvailableForBorrow,
+      physicalLocation: data.physicalLocation.present
+          ? data.physicalLocation.value
+          : this.physicalLocation,
+      address: data.address.present ? data.address.value : this.address,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
       dateCreated: data.dateCreated.present
           ? data.dateCreated.value
           : this.dateCreated,
@@ -973,6 +1228,13 @@ class Document extends DataClass implements Insertable<Document> {
           ..write('fileSize: $fileSize, ')
           ..write('note: $note, ')
           ..write('isPinned: $isPinned, ')
+          ..write('tags: $tags, ')
+          ..write('isPhysical: $isPhysical, ')
+          ..write('isAvailableForBorrow: $isAvailableForBorrow, ')
+          ..write('physicalLocation: $physicalLocation, ')
+          ..write('address: $address, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('dateCreated: $dateCreated, ')
           ..write('dateTimeModified: $dateTimeModified')
           ..write(')'))
@@ -991,6 +1253,13 @@ class Document extends DataClass implements Insertable<Document> {
     fileSize,
     note,
     isPinned,
+    tags,
+    isPhysical,
+    isAvailableForBorrow,
+    physicalLocation,
+    address,
+    latitude,
+    longitude,
     dateCreated,
     dateTimeModified,
   );
@@ -1008,6 +1277,13 @@ class Document extends DataClass implements Insertable<Document> {
           other.fileSize == this.fileSize &&
           other.note == this.note &&
           other.isPinned == this.isPinned &&
+          other.tags == this.tags &&
+          other.isPhysical == this.isPhysical &&
+          other.isAvailableForBorrow == this.isAvailableForBorrow &&
+          other.physicalLocation == this.physicalLocation &&
+          other.address == this.address &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
           other.dateCreated == this.dateCreated &&
           other.dateTimeModified == this.dateTimeModified);
 }
@@ -1023,6 +1299,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
   final Value<int> fileSize;
   final Value<String?> note;
   final Value<bool> isPinned;
+  final Value<String> tags;
+  final Value<bool> isPhysical;
+  final Value<bool> isAvailableForBorrow;
+  final Value<String?> physicalLocation;
+  final Value<String?> address;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   final Value<DateTime> dateCreated;
   final Value<DateTime> dateTimeModified;
   final Value<int> rowid;
@@ -1037,6 +1320,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     this.fileSize = const Value.absent(),
     this.note = const Value.absent(),
     this.isPinned = const Value.absent(),
+    this.tags = const Value.absent(),
+    this.isPhysical = const Value.absent(),
+    this.isAvailableForBorrow = const Value.absent(),
+    this.physicalLocation = const Value.absent(),
+    this.address = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.dateCreated = const Value.absent(),
     this.dateTimeModified = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1052,6 +1342,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     this.fileSize = const Value.absent(),
     this.note = const Value.absent(),
     this.isPinned = const Value.absent(),
+    this.tags = const Value.absent(),
+    this.isPhysical = const Value.absent(),
+    this.isAvailableForBorrow = const Value.absent(),
+    this.physicalLocation = const Value.absent(),
+    this.address = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.dateCreated = const Value.absent(),
     this.dateTimeModified = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1069,6 +1366,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     Expression<int>? fileSize,
     Expression<String>? note,
     Expression<bool>? isPinned,
+    Expression<String>? tags,
+    Expression<bool>? isPhysical,
+    Expression<bool>? isAvailableForBorrow,
+    Expression<String>? physicalLocation,
+    Expression<String>? address,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
     Expression<DateTime>? dateCreated,
     Expression<DateTime>? dateTimeModified,
     Expression<int>? rowid,
@@ -1084,6 +1388,14 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
       if (fileSize != null) 'file_size': fileSize,
       if (note != null) 'note': note,
       if (isPinned != null) 'is_pinned': isPinned,
+      if (tags != null) 'tags': tags,
+      if (isPhysical != null) 'is_physical': isPhysical,
+      if (isAvailableForBorrow != null)
+        'is_available_for_borrow': isAvailableForBorrow,
+      if (physicalLocation != null) 'physical_location': physicalLocation,
+      if (address != null) 'address': address,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       if (dateCreated != null) 'date_created': dateCreated,
       if (dateTimeModified != null) 'date_time_modified': dateTimeModified,
       if (rowid != null) 'rowid': rowid,
@@ -1101,6 +1413,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     Value<int>? fileSize,
     Value<String?>? note,
     Value<bool>? isPinned,
+    Value<String>? tags,
+    Value<bool>? isPhysical,
+    Value<bool>? isAvailableForBorrow,
+    Value<String?>? physicalLocation,
+    Value<String?>? address,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
     Value<DateTime>? dateCreated,
     Value<DateTime>? dateTimeModified,
     Value<int>? rowid,
@@ -1116,6 +1435,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
       fileSize: fileSize ?? this.fileSize,
       note: note ?? this.note,
       isPinned: isPinned ?? this.isPinned,
+      tags: tags ?? this.tags,
+      isPhysical: isPhysical ?? this.isPhysical,
+      isAvailableForBorrow: isAvailableForBorrow ?? this.isAvailableForBorrow,
+      physicalLocation: physicalLocation ?? this.physicalLocation,
+      address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       dateCreated: dateCreated ?? this.dateCreated,
       dateTimeModified: dateTimeModified ?? this.dateTimeModified,
       rowid: rowid ?? this.rowid,
@@ -1159,6 +1485,29 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     if (isPinned.present) {
       map['is_pinned'] = Variable<bool>(isPinned.value);
     }
+    if (tags.present) {
+      map['tags'] = Variable<String>(tags.value);
+    }
+    if (isPhysical.present) {
+      map['is_physical'] = Variable<bool>(isPhysical.value);
+    }
+    if (isAvailableForBorrow.present) {
+      map['is_available_for_borrow'] = Variable<bool>(
+        isAvailableForBorrow.value,
+      );
+    }
+    if (physicalLocation.present) {
+      map['physical_location'] = Variable<String>(physicalLocation.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     if (dateCreated.present) {
       map['date_created'] = Variable<DateTime>(dateCreated.value);
     }
@@ -1184,6 +1533,13 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
           ..write('fileSize: $fileSize, ')
           ..write('note: $note, ')
           ..write('isPinned: $isPinned, ')
+          ..write('tags: $tags, ')
+          ..write('isPhysical: $isPhysical, ')
+          ..write('isAvailableForBorrow: $isAvailableForBorrow, ')
+          ..write('physicalLocation: $physicalLocation, ')
+          ..write('address: $address, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('dateCreated: $dateCreated, ')
           ..write('dateTimeModified: $dateTimeModified, ')
           ..write('rowid: $rowid')
@@ -1795,6 +2151,13 @@ typedef $$DocumentsTableCreateCompanionBuilder = DocumentsCompanion Function({
   Value<int> fileSize,
   Value<String?> note,
   Value<bool> isPinned,
+  Value<String> tags,
+  Value<bool> isPhysical,
+  Value<bool> isAvailableForBorrow,
+  Value<String?> physicalLocation,
+  Value<String?> address,
+  Value<double?> latitude,
+  Value<double?> longitude,
   Value<DateTime> dateCreated,
   Value<DateTime> dateTimeModified,
   Value<int> rowid,
@@ -1810,6 +2173,13 @@ typedef $$DocumentsTableUpdateCompanionBuilder = DocumentsCompanion Function({
   Value<int> fileSize,
   Value<String?> note,
   Value<bool> isPinned,
+  Value<String> tags,
+  Value<bool> isPhysical,
+  Value<bool> isAvailableForBorrow,
+  Value<String?> physicalLocation,
+  Value<String?> address,
+  Value<double?> latitude,
+  Value<double?> longitude,
   Value<DateTime> dateCreated,
   Value<DateTime> dateTimeModified,
   Value<int> rowid,
@@ -1873,6 +2243,41 @@ class $$DocumentsTableFilterComposer
 
   ColumnFilters<bool> get isPinned => $composableBuilder(
     column: $table.isPinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tags => $composableBuilder(
+    column: $table.tags,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPhysical => $composableBuilder(
+    column: $table.isPhysical,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isAvailableForBorrow => $composableBuilder(
+    column: $table.isAvailableForBorrow,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get physicalLocation => $composableBuilder(
+    column: $table.physicalLocation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1946,6 +2351,41 @@ class $$DocumentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tags => $composableBuilder(
+    column: $table.tags,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPhysical => $composableBuilder(
+    column: $table.isPhysical,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isAvailableForBorrow => $composableBuilder(
+    column: $table.isAvailableForBorrow,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get physicalLocation => $composableBuilder(
+    column: $table.physicalLocation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get dateCreated => $composableBuilder(
     column: $table.dateCreated,
     builder: (column) => ColumnOrderings(column),
@@ -1998,6 +2438,33 @@ class $$DocumentsTableAnnotationComposer
   GeneratedColumn<bool> get isPinned =>
       $composableBuilder(column: $table.isPinned, builder: (column) => column);
 
+  GeneratedColumn<String> get tags =>
+      $composableBuilder(column: $table.tags, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPhysical => $composableBuilder(
+    column: $table.isPhysical,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isAvailableForBorrow => $composableBuilder(
+    column: $table.isAvailableForBorrow,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get physicalLocation => $composableBuilder(
+    column: $table.physicalLocation,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
   GeneratedColumn<DateTime> get dateCreated => $composableBuilder(
     column: $table.dateCreated,
     builder: (column) => column,
@@ -2047,6 +2514,13 @@ class $$DocumentsTableTableManager
                 Value<int> fileSize = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
+                Value<String> tags = const Value.absent(),
+                Value<bool> isPhysical = const Value.absent(),
+                Value<bool> isAvailableForBorrow = const Value.absent(),
+                Value<String?> physicalLocation = const Value.absent(),
+                Value<String?> address = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 Value<DateTime> dateCreated = const Value.absent(),
                 Value<DateTime> dateTimeModified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2061,6 +2535,13 @@ class $$DocumentsTableTableManager
                 fileSize: fileSize,
                 note: note,
                 isPinned: isPinned,
+                tags: tags,
+                isPhysical: isPhysical,
+                isAvailableForBorrow: isAvailableForBorrow,
+                physicalLocation: physicalLocation,
+                address: address,
+                latitude: latitude,
+                longitude: longitude,
                 dateCreated: dateCreated,
                 dateTimeModified: dateTimeModified,
                 rowid: rowid,
@@ -2077,6 +2558,13 @@ class $$DocumentsTableTableManager
                 Value<int> fileSize = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
+                Value<String> tags = const Value.absent(),
+                Value<bool> isPhysical = const Value.absent(),
+                Value<bool> isAvailableForBorrow = const Value.absent(),
+                Value<String?> physicalLocation = const Value.absent(),
+                Value<String?> address = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 Value<DateTime> dateCreated = const Value.absent(),
                 Value<DateTime> dateTimeModified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2091,6 +2579,13 @@ class $$DocumentsTableTableManager
                 fileSize: fileSize,
                 note: note,
                 isPinned: isPinned,
+                tags: tags,
+                isPhysical: isPhysical,
+                isAvailableForBorrow: isAvailableForBorrow,
+                physicalLocation: physicalLocation,
+                address: address,
+                latitude: latitude,
+                longitude: longitude,
                 dateCreated: dateCreated,
                 dateTimeModified: dateTimeModified,
                 rowid: rowid,

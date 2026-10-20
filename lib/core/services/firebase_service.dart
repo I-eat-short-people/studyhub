@@ -48,20 +48,18 @@ class FirebaseService extends ChangeNotifier {
   User? get currentUser => FirebaseAuth.instance.currentUser ?? _currentUser;
   bool get isLoggedIn => currentUser != null || authSyncService.isLoggedIn;
   String? get userDisplayName =>
-      currentUser?.displayName ??
       authSyncService.user?.displayName ??
-      currentUser?.email?.split('@').first ??
-      authSyncService.user?.email.split('@').first;
-  String? get userEmail => currentUser?.email ?? authSyncService.user?.email;
-  String? get userPhotoUrl => currentUser?.photoURL ?? authSyncService.user?.photoUrl;
+      currentUser?.displayName ??
+      authSyncService.user?.email.split('@').first ??
+      currentUser?.email?.split('@').first;
+  String? get userEmail => authSyncService.user?.email ?? currentUser?.email;
+  String? get userPhotoUrl => authSyncService.user?.photoUrl ?? currentUser?.photoURL;
   String? get userId =>
-      currentUser?.uid ??
-      (authSyncService.user?.email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_'));
+      authSyncService.user != null
+          ? authSyncService.user!.email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')
+          : currentUser?.uid;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '749333059425-h2ssnacgt3l0b8kai5kurq8p135gk6mh.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
-  );
+  GoogleSignIn get _googleSignIn => authSyncService.googleSignIn;
 
   /// Khởi tạo Firebase an toàn cho ứng dụng StudyHub
   Future<bool> initialize() async {

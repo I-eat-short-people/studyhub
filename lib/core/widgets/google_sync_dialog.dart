@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_sync_service.dart';
 import '../services/firebase_service.dart';
-import '../../features/documents/presentation/shared_documents_screen.dart';
+import '../services/supabase_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 
@@ -202,35 +202,133 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: FilledButton.tonal(
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: const Color(0xFF3F51B5).withValues(alpha: 0.15),
-                                ),
-                                onPressed: () {
-                                  authSyncService.signInDemo();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Đã đăng nhập tài khoản Demo thành công!'),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Dùng thử Demo',
-                                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF3F51B5)),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
                 ],
-                if (lastError.contains('Google Drive API') || lastError.contains('403')) ...[
+                if (lastError.contains('People API') || lastError.contains('people.googleapis.com')) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE65100).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE65100).withValues(alpha: 0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.person_search_rounded, size: 18, color: Color(0xFFE65100)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Cần kích hoạt Google People API (Bắt buộc cho Web):',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFBF360C),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Google Sign-In trên Web yêu cầu dịch vụ People API để lấy họ tên và ảnh đại diện tài khoản Google của bạn. Hãy bấm nút dưới đây để kích hoạt trên Google Cloud Console (hoàn toàn miễn phí):',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF37474F)),
+                        ),
+                        const SizedBox(height: 10),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: const Color(0xFFE65100),
+                          ),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                          label: const Text(
+                            'Bật Google People API (Dự án 749333059425)',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: () {
+                            launchUrl(
+                              Uri.parse('https://console.developers.google.com/apis/api/people.googleapis.com/overview?project=749333059425'),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (lastError.contains('401') || lastError.contains('hết hạn') || lastError.contains('Cấp lại quyền')) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF6C00).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFEF6C00).withValues(alpha: 0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.refresh_rounded, size: 18, color: Color(0xFFE65100)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Làm mới phiên làm việc Google Drive (401)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFE65100),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Mã truy cập Google Drive của tài khoản đã hết hạn hoặc cần cấp lại quyền sau khi chuyển tài khoản. Bấm nút dưới đây để làm mới:',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF37474F)),
+                        ),
+                        const SizedBox(height: 10),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: const Color(0xFFEF6C00),
+                          ),
+                          icon: isSyncing
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.sync_rounded, size: 16),
+                          label: Text(
+                            isSyncing ? 'Đang cấp lại quyền...' : 'Cấp lại quyền & Đồng bộ ngay',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: isSyncing
+                              ? null
+                              : () async {
+                                  final ok = await authSyncService.reauthorizeDrive();
+                                  if (context.mounted && ok) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Đồng bộ Google Drive thành công!')),
+                                    );
+                                  }
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (lastError.contains('Google Drive API') || (lastError.contains('403') && lastError.contains('drive'))) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 14),
@@ -260,7 +358,7 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Dự án Google Cloud của nhóm chưa bật Drive API. Bạn có thể bấm nút bên dưới để bật (miễn phí), hoặc sử dụng nút "Sao lưu tài liệu lên Firebase Storage" (không cần Google Drive):',
+                          'Dự án Google Cloud chưa bật Drive API. Bạn có thể bấm nút bên dưới để bật (miễn phí), hoặc sử dụng sao lưu lên Cloud Storage:',
                           style: TextStyle(fontSize: 11, color: Color(0xFF37474F)),
                         ),
                         const SizedBox(height: 8),
@@ -277,7 +375,7 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                           ),
                           onPressed: () {
                             launchUrl(
-                              Uri.parse('https://console.cloud.google.com/apis/library/drive.googleapis.com?project=studyhubmob'),
+                              Uri.parse('https://console.cloud.google.com/apis/library/drive.googleapis.com?project=749333059425'),
                               mode: LaunchMode.externalApplication,
                             );
                           },
@@ -344,11 +442,16 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                       ? null
                       : () async {
                           final success = await authSyncService.signInWithGoogle();
+                          if (success) {
+                            await supabaseService.clearAccessCache();
+                            await supabaseService.syncDocumentsForCurrentAccount();
+                          }
                           if (context.mounted && success) {
+                            Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    'Đăng nhập Google và đồng bộ Google Drive thành công!'),
+                                    'Đăng nhập Google và đồng bộ tài liệu thành công!'),
                               ),
                             );
                           }
@@ -465,100 +568,97 @@ class _GoogleSyncDialogState extends State<GoogleSyncDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                // Card thông báo Tự động sao lưu đám mây
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                const SizedBox(height: 14),
+                // Trạng thái Tự động sao lưu đám mây tinh gọn
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF43A047),
+                      size: 20,
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.cloud_done_rounded, color: Color(0xFF2E7D32), size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Tự động sao lưu đám mây: Đang bật',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1B5E20),
-                              ),
-                            ),
-                          ),
-                        ],
+                    SizedBox(width: 8),
+                    Text(
+                      'Tự động sao lưu đám mây',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2E7D32),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Khi bạn thêm tài liệu PDF/Word mới, ứng dụng sẽ tự động tải lên Supabase Storage và lưu trữ an toàn trên đám mây.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: textLightColor,
-                          height: 1.35,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A73E8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: isSyncing
+                            ? null
+                            : () async {
+                                final ok = await authSyncService.syncNow();
+                                if (context.mounted && ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Đồng bộ Google Drive thành công!'),
+                                    ),
+                                  );
+                                }
+                              },
+                        icon: isSyncing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.sync_rounded, size: 20),
+                        label: Text(
+                          isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // Nút chuyển đến Tài liệu được chia sẻ
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1976D2),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SharedDocumentsScreen(),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: getColor(context, 'expenseAmount'),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: getColor(context, 'expenseAmount').withValues(alpha: 0.5),
+                        ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.folder_shared_outlined, size: 20),
-                  label: const Text(
-                    'Xem tài liệu được chia sẻ với tôi',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Sign Out Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: getColor(context, 'expenseAmount'),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      onPressed: () async {
+                        await authSyncService.signOut();
+                        await firebaseService.signOut();
+                        await supabaseService.clearAccessCache();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đã đăng xuất Google')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text(
+                        'Đăng xuất',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
-                    side: BorderSide(
-                      color: getColor(context, 'expenseAmount').withValues(alpha: 0.5),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await authSyncService.signOut();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã đăng xuất Google')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.logout_rounded, size: 20),
-                  label: const Text(
-                    'Đăng xuất',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  ],
                 ),
               ],
             ],
@@ -603,7 +703,12 @@ class GoogleProfileAppBarButton extends StatelessWidget {
           tooltip: isLoggedIn
               ? 'Tài khoản: ${user?.displayName} (Google Drive Sync)'
               : 'Đăng nhập Google & Đồng bộ',
-          onPressed: () => GoogleSyncDialog.show(context),
+          onPressed: () async {
+            await GoogleSyncDialog.show(context);
+            if (context.mounted && supabaseService.isConfigured && authSyncService.isLoggedIn) {
+              await supabaseService.syncDocumentsForCurrentAccount();
+            }
+          },
         );
       },
     );

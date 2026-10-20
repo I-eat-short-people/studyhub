@@ -28,6 +28,14 @@ class Documents extends Table {
   IntColumn get fileSize => integer().withDefault(const Constant(0))();
   TextColumn get note => text().withLength(max: 1000).nullable()();
   BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
+  TextColumn get tags => text().withDefault(const Constant(''))();
+  BoolColumn get isPhysical => boolean().withDefault(const Constant(false))();
+  BoolColumn get isAvailableForBorrow =>
+      boolean().withDefault(const Constant(false))();
+  TextColumn get physicalLocation => text().nullable()();
+  TextColumn get address => text().nullable()();
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
   DateTimeColumn get dateCreated =>
       dateTime().clientDefault(() => DateTime.now())();
   DateTimeColumn get dateTimeModified =>
