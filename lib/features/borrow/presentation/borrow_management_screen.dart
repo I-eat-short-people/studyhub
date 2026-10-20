@@ -19,6 +19,11 @@ class BorrowManagementScreen extends StatefulWidget {
 }
 
 class _BorrowManagementScreenState extends State<BorrowManagementScreen>
+ // ============================================================================
+   // MODULE QUẢN LÝ MƯỢN TRẢ TÀI LIỆU (BORROW MANAGEMENT)
+   // - Xử lý 2 luồng: Yêu cầu tôi gửi đi (Outgoing) và Yêu cầu tôi nhận được (Incoming)
+   // - Tự động đồng bộ trạng thái: PENDING -> ACCEPTED / REJECTED -> RETURNED
+   // ============================================================================
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
@@ -48,7 +53,7 @@ class _BorrowManagementScreenState extends State<BorrowManagementScreen>
 
   void _onServiceChanged() {
     if (mounted) {
-      _loadData();
+      _loadData(); // Tải danh sách yêu cầu mượn song song để tối ưu tốc độ phản hồi UI
     }
   }
 
@@ -863,7 +868,7 @@ class _BorrowManagementScreenState extends State<BorrowManagementScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Làm mới',
+            tooltip: 'Làm mới danh sách mượn',
             onPressed: _loadData,
           ),
         ],
@@ -873,4 +878,3 @@ class _BorrowManagementScreenState extends State<BorrowManagementScreen>
     );
   }
 }
-
